@@ -21,12 +21,15 @@ from scipy.spatial.transform import Rotation as R
 from std_msgs.msg import Int32
 
 # WAYPOINT_PATH = '/root/yolov8_ws/src/waypoint_manager2/config/waypoints/test.yaml'
-WAYPOINT_PATH = '/home/orne_ws/src/orne-box/orne_box_navigation_executor/config/waypoints/tsudanuma2-3.yaml'
+WAYPOINT_PATH = '/home/kyo/orne_ws/src/orne-box/orne_box_navigation_executor/config/waypoints/tsudanuma2-3.yaml'
 # WAYPOINT_PATH = '/home/ros2_ws/src/orne-box/orne_box_navigation_executor/config/waypoints/tsudanuma.yaml'
-# WAYPOINT_SAVE_PATH = '/home/orne_ws/src/waypoint_manager2/config/waypoints/waffle.yaml'
+# WAYPOINT_SAVE_PATH = '/home/kyo/orne_ws/src/waypoint_manager2/config/waypoints/waffle.yaml'
 WP_FEEDBACK_VISIBLE = True
 OVERWRITE = True
 TIME_PERIOD = 0.1
+
+override_waypoint_id = 1
+reset_waypoint_id = 2
 
 menu_handler = MenuHandler()
 h_first_entry = 0
@@ -151,11 +154,11 @@ class traffic_waypoint_manager2_node(Node):
         waypoint_msg.data = self.current_waypoint
         self.current_waypoint_pub.publish(waypoint_msg)
         # self.get_logger().info(f'current_waypoint: {waypoint_msg.data}')
-        if self.current_waypoint == 3 and not self.override_flag:
+        if self.current_waypoint == override_waypoint_id and not self.override_flag:
             self.override_flag = True
             self.send_request(self.param_override_crient, 'param_override')
         
-        if self.current_waypoint == 4 and self.override_flag:
+        if self.current_waypoint == reset_waypoint_id and self.override_flag:
             self.override_flag = False
             self.send_request(self.param_reset_crient, 'param_reset')
 
