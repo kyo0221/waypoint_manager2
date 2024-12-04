@@ -21,9 +21,9 @@ from scipy.spatial.transform import Rotation as R
 from std_msgs.msg import Int32
 
 # WAYPOINT_PATH = '/root/yolov8_ws/src/waypoint_manager2/config/waypoints/test.yaml'
-WAYPOINT_PATH = '/home/ros2_ws/src/orne-box/orne_box_navigation_executor/config/waypoints/tsudanuma2-3.yaml'
+WAYPOINT_PATH = '/home/orne_ws/src/orne-box/orne_box_navigation_executor/config/waypoints/tsudanuma2-3.yaml'
 # WAYPOINT_PATH = '/home/ros2_ws/src/orne-box/orne_box_navigation_executor/config/waypoints/tsudanuma.yaml'
-WAYPOINT_SAVE_PATH = '/root/yolov8_ws/src/waypoint_manager2/config/waypoints/waffle.yaml'
+# WAYPOINT_SAVE_PATH = '/home/orne_ws/src/waypoint_manager2/config/waypoints/waffle.yaml'
 WP_FEEDBACK_VISIBLE = True
 OVERWRITE = True
 TIME_PERIOD = 0.1
@@ -89,6 +89,8 @@ class traffic_waypoint_manager2_node(Node):
         self.save_wp_service = self.create_service(Trigger, 'waypoint_manager2/save_wp', self.save_wp_callback)
         self.start_wp_nav_service = self.create_service(Trigger, 'waypoint_manager2/start_wp_nav', self.start_wp_nav_callback)
         self.next_wp_service = self.create_service(Trigger, 'waypoint_manager2/next_wp', self.next_wp_callback)
+        self.param_override_crient = self.create_client(Trigger, 'param_override')
+        self.param_reset_crient = self.create_client(Trigger, 'param_reset')
         self.route_pub = self.create_publisher(MarkerArray, 'waypoint_manager2/routes', 1)
         self.update_pub = self.create_publisher(InteractiveMarkerUpdate, 'waypoint_manager2/update', 1)
         # new traffic
@@ -124,6 +126,8 @@ class traffic_waypoint_manager2_node(Node):
         self.reject_next_wp = False
         self.next_wp_flag = False
 
+        self.override_flag = False
+
         self.current_waypoint = 0
         self.old_number_of_recoveries = 0
         self.failed_count = 0
@@ -146,7 +150,30 @@ class traffic_waypoint_manager2_node(Node):
         waypoint_msg = Int32()
         waypoint_msg.data = self.current_waypoint
         self.current_waypoint_pub.publish(waypoint_msg)
-        self.get_logger().info(f'current_waypoint: {waypoint_msg.data}')
+        # self.get_logger().info(f'current_waypoint: {waypoint_msg.data}')
+        if self.current_waypoint == 3 and not self.override_flag:
+            self.override_flag = True
+            self.send_request(self.param_override_crient, 'param_override')
+        
+        if self.current_waypoint == 4 and self.override_flag:
+            self.override_flag = False
+            self.send_request(self.param_reset_crient, 'param_reset')
+
+    def send_request(self, client, service_name):
+        request = Trigger.Request()
+        future = client.call_async(request)
+        rclpy.spin_until_future_complete(self, future)
+
+        try:
+            response = future.result()
+            if response.success:
+                self.get_logger().info(f"{service_name} success: {response.message}")
+            else:
+                self.get_logger().error(f"{service_name} failure: {response.message}")
+        except Exception as e:
+            self.get_logger().error(f"{service_name} params error: {e}")
+
+
 
     def send_wp_callback(self, request, response):
         if self.resend_wp_flag:
